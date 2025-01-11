@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>First Aid Assistant</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
+    <style>
+        @keyframes dots {
+            0%, 20% { content: "·"; }
+            40% { content: "··"; }
+            60% { content: "···"; }
+            80%, 100% { content: ""; }
+        }
+
+        .ambulance-icon {
+            position: relative;
+            display: inline-flex;
+            align-items: center;
+        }
+
+        .ambulance-icon::after {
+            content: "";
+            position: absolute;
+            left: 100%;
+            margin-left: 4px;
+            height: 2px;
+            background: currentColor;
+            animation: dotted-line 1.5s infinite;
+            opacity: 0.6;
+        }
+
+        .typing .ambulance-icon::after {
+            content: "";
+            margin-left: 4px;
+            animation: dots 1.5s infinite;
+            font-size: 20px;
+            letter-spacing: 2px;
+        }
+
+        .dark-mode {
+            background-color: #202123;
+            color: #E4E4E7;
+        }
+        
+        .dark-mode .main-content,
+        .dark-mode .chat-container {
+            background-color: #202123;
+        }
+
+        .dark-mode .bg-white {
+            background-color: #202123 !important;
+        }
+
+        .dark-mode .message-bubble {
+            background-color: #2d2d30;
+            color: #E4E4E7;
+        }
+
+        .dark-mode .header {
+            background-color: #202123 !important;
+            border-bottom: 1px solid #2d2d30;
+        }
+
+        .dark-mode input, .dark-mode button:not(.send-button) {
+            background-color: #2d2d30 !important;
+            color: #E4E4E7 !important;
+            border: 1px solid #4b4b4b;
+        }
+
+        .dark-mode .history-btn,
+        .dark-mode .theme-btn {
+            background-color: #2d2d30;
+            color: #E4E4E7;
+            border: 1px solid #4b4b4b;
+        }
+
+        .dark-mode #history-sidebar {
+            background-color: #202123;
+            border-color: #2d2d30;
+        }
+
+        .dark-mode .history-item:hover {
+            background-color: #2d2d30;
+        }
+
+        .message-input-container {
+            position: sticky;
+            bottom: 0;
+            background: inherit;
+            padding: 1rem;
+            margin-top: auto;
+        }
+
+        .send-button {
+            background: black;
+            border-radius: 50%;
+            width: 32px;
+            height: 32px;
+            padding: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: absolute;
+            right: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+        }
+        .send-button svg {
+            stroke: white;
+            width: 18px;
+            height: 18px;
+        }
+        .dark-mode .send-button {
+            background: white;
+        }
+        .dark-mode .send-button svg {
+            stroke: black;
+        }
+        .mic-button {
+            position: absolute;
+            right: 50px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 1.2rem;
+            color: #6b7280;
+            transition: color 0.3s ease;
+        }
+        .mic-button:hover {
+            color: #3b82f6;
+        }
+        .mic-active {
+            color: #ef4444 !important;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 transition-colors duration-300">
+    <div class="flex flex-col h-screen">
+        <!-- Header -->
+        <header class="header bg-white shadow-md p-4 transition-colors duration-300 fixed top-0 left-0 right-0 z-10">
+            <div class="container mx-auto flex justify-between items-center">
+                <div class="flex items-center space-x-2">
+                    <i class="fas fa-heartbeat text-red-500 text-3xl"></i>
+                    <h1 class="text-2xl font-bold text-blue-600">First Aid Assistant</h1>
+                </div>
+                <div class="flex space-x-2">
+                    <button id="history-toggle" class="history-btn px-4 py-2 rounded-lg transition duration-300 hover:bg-gray-300">
+                        <i class="fas fa-history"></i> <span class="hidden sm:inline">History</span>
+                    </button>
+                    <button id="theme-toggle" class="theme-btn px-4 py-2 rounded-lg transition duration-300 hover:bg-gray-300">
+                        <i class="fas fa-moon"></i> <span class="hidden sm:inline">Dark Mode</span>
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <div class="flex flex-1 pt-16">
+            <!-- Sidebar -->
+            <div id="history-sidebar" class="w-full sm:w-1/4 lg:w-1/5 bg-white p-4 overflow-y-auto border-r border-gray-200 transition-colors duration-300 hidden">
+                <h2 class="text-xl font-bold mb-4">Previous Conversations</h2>
+                <div id="history-list"></div>
+            </div>
+
+            <!-- Main Content -->
+            <div class="main-content flex-1 flex flex-col">
+                <div class="chat-container flex-1 flex flex-col p-4">
+                    <div id="chat-box" class="flex-1 overflow-y-auto mb-6"></div>
+                    
+                    <div class="message-input-container">
+                        <form id="chat-form" class="flex relative">
+                            <input type="text" id="user-input" class="flex-grow p-3 pr-24 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400 transition duration-300" placeholder="Ask your first aid question...">
+                            <button type="button" id="mic-button" class="mic-button">
+                                <i class="fas fa-microphone"></i>
+                            </button>
+                            <button type="submit" class="send-button">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 10l7-7m0 0l7 7m-7-7v18" />
+                                </svg>
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        $(document).ready(function() {
+            const synth = window.speechSynthesis;
+            let currentUtterance = null;
+
+            function addMessage(sender, message, isTyping = false) {
+                const isUser = sender === 'You';
+                const messageClass = isUser 
+                    ? 'bg-blue-500 text-white self-end'  
+                    : 'message-bubble self-start bg-gray-200 text-gray-700';
+                
+                const ambulanceIcon = `
+                    <div class="ambulance-icon text-red-500">
+                        <i class="fas fa-ambulance"></i>${isTyping ? '<span class="dots"></span>' : ''}
+                    </div>
+                `;
+                
+                const messageContainer = `
+                    <div class="flex ${isUser ? 'justify-end' : 'justify-start'} mb-4">
+                        <div class="flex flex-col items-${isUser ? 'end' : 'start'} max-w-md">
+                            <div class="flex items-center space-x-2 p-3 rounded-lg shadow ${messageClass}">
+                                ${!isUser ? ambulanceIcon : ''} 
+                                <span class="${isTyping ? 'typing' : ''}">${message}</span>
+                                ${isUser ? '<i class="fas fa-user text-white"></i>' : ''}
+                            </div>
+                            ${!isUser && !isTyping ? '<button class="text-to-speech mt-2 text-blue-500 hover:text-blue-600" aria-label="Listen to message"><i class="fas fa-volume-up"></i></button>' : ''}
+                        </div>
+                    </div>
+                `;
+
+                $('#chat-box').append(messageContainer);
+                $('#chat-box').scrollTop($('#chat-box')[0].scrollHeight);
+            }
+
+            function sendMessage(message) {
+                addMessage('You', message);
+                $('#user-input').val('');
+                $('#chat-form button').prop('disabled', true);
+
+                let typingMessage = addMessage('AI', 'Thinking...', true);
+
+                $.ajax({
+                    url: '/chat',
+                    method: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify({ message: message }),
+                    success: function(response) {
+                        $('.typing').parent().parent().parent().remove();
+                        addMessage('AI', response.message);
+                        updateHistory();
+                    },
+                    error: function() {
+                        $('.typing').parent().parent().parent().remove();
+                        addMessage('AI', 'An error occurred.');
+                    },
+                    complete: function() {
+                        $('#chat-form button').prop('disabled', false);
+                    }
+                });
+            }
+
+            function updateHistory() {
+                $.get('/history', function(data) {
+                    $('#history-list').empty();
+                    data.forEach(function(item, index) {
+                        $('#history-list').append(`
+                            <div class="history-item cursor-pointer p-2 hover:bg-gray-100 rounded transition duration-300" data-index="${index}">
+                                <h3 class="font-medium truncate">${item.user}</h3>
+                            </div>
+                        `);
+                    });
+                });
+            }
+
+            function speakMessage(text) {
+                if (currentUtterance) {
+                    synth.cancel();
+                    currentUtterance = null;
+                    return;
+                }
+                currentUtterance = new SpeechSynthesisUtterance(text);
+                currentUtterance.onend = function() {
+                    currentUtterance = null;
+                };
+                synth.speak(currentUtterance);
+            }
+
+            $('#chat-form').submit(function(e) {
+                e.preventDefault();
+                const userMessage = $('#user-input').val();
+                if (!userMessage.trim()) return;
+                sendMessage(userMessage);
+            });
+
+            $(document).on('click', '.history-item', function() {
+                const index = $(this).data('index');
+                $.get(`/history/${index}`, function(data) {
+                    $('#chat-box').empty();
+                    sendMessage(data.user);
+                });
+            });
+
+            $('#theme-toggle').click(function() {
+                $('body').toggleClass('dark-mode');
+                const isDark = $('body').hasClass('dark-mode');
+                $(this).html(isDark ? '<i class="fas fa-sun"></i> <span class="hidden sm:inline">Light Mode</span>' : '<i class="fas fa-moon"></i> <span class="hidden sm:inline">Dark Mode</span>');
+            });
+
+            $('#history-toggle').click(function() {
+                $('#history-sidebar').toggleClass('hidden');
+                updateHistory();
+            });
+
+            $(document).on('click', '.text-to-speech', function() {
+                const messageText = $(this).prev().find('span').text();
+                speakMessage(messageText);
+                $(this).toggleClass('text-blue-500 text-red-500');
+            });
+
+            // Voice input functionality
+            const micButton = document.getElementById('mic-button');
+            const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+
+            recognition.lang = 'en-US';
+            recognition.interimResults = false;
+            recognition.maxAlternatives = 1;
+
+            micButton.addEventListener('click', () => {
+                if (micButton.classList.contains('mic-active')) {
+                    recognition.stop();
+                } else {
+                    recognition.start();
+                }
+                micButton.classList.toggle('mic-active');
+            });
+
+            recognition.onresult = (event) => {
+                const speechResult = event.results[0][0].transcript;
+                $('#user-input').val(speechResult);
+                micButton.classList.remove('mic-active');
+                // Automatically submit the form
+                $('#chat-form').submit();
+            };
+
+            recognition.onend = () => {
+                micButton.classList.remove('mic-active');
+            };
+
+            // Initial load
+            addMessage('AI', 'Hello! I\'m your First Aid Assistant. How can I help you today?');
+        });
+    </script>
+</body>
+</html>
