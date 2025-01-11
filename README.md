@@ -42,7 +42,7 @@ first-aid-chatbot/
 │── templates/
 │   ├── index.html         # Web UI
 │── ll.py                  # LangChain conversation logic
-│── pdf_parser.py          # PDF text extraction
+│── First_aid.pdf          # PDF text extraction
 │── requirements.txt       # Dependencies
 │── README.md              # Project documentation
 
